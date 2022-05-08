@@ -1,42 +1,61 @@
-using Identity.API;
-using Microsoft.AspNetCore;
+using Identity.API.Data;
+using Identity.API.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
-var configuration = GetConfiguration();
-
-try
+var seed = args.Contains("/seed");
+if (seed)
 {
-    var host = BuildWebHost(configuration, args);
-    host.Run();
-    return 0;
-}
-catch (Exception ex)
-{
-    return 1;
+    args = args.Except(new[] { "/seed" }).ToArray();
 }
 
-/// <summary>
-/// 啟動Webhost
-/// </summary>
-static IWebHost BuildWebHost(IConfiguration configuration, string[] args) =>
-    WebHost.CreateDefaultBuilder(args)                          
-        .CaptureStartupErrors(false)                                        //當設定為false時,啟動過程中的錯誤會導致主機退出,當設定為 true 時,主機會捕獲啟動過程中的異常,並且試圖啟動伺服器(若是使用IIS啟動，預設為True)
-        .ConfigureAppConfiguration(x => x.AddConfiguration(configuration))  //註冊 configuration
-        .UseStartup<Startup>()                                              //使用 Startup 啟動呼叫兩個類別(ConfigureServices,Configure)> ConfigureServices:DI註冊Service用(可以不實作);
-                                                                            //Configure:整個應用服務的核心規範,其中IApplicationBuilder為必要參數是決定Pipeline的地方
-        .Build();
+var builder = WebApplication.CreateBuilder(args);
+var assembly = typeof(Program).Assembly.GetName().Name;
+var Connectstring = builder.Configuration.GetConnectionString("DefaultConnection");
 
-
-/// <summary>
-/// 實例化 Config
-/// </summary>
-IConfiguration GetConfiguration()
+if (seed)
 {
-    var builder = new ConfigurationBuilder()
-        .SetBasePath(Directory.GetCurrentDirectory())
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        .AddEnvironmentVariables();
-
-    var config = builder.Build();
-
-    return builder.Build();
+    SeedData.EnsureSeedData(Connectstring);
 }
+
+
+builder.Services.AddDbContext<AspNetIdentityDbContext>(option =>
+                {
+                    option.UseSqlServer(Connectstring, db => db.MigrationsAssembly(assembly));
+                });
+
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+                .AddEntityFrameworkStores<AspNetIdentityDbContext>();
+
+builder.Services.AddIdentityServer()
+                .AddAspNetIdentity<IdentityUser>()
+                .AddConfigurationStore(option =>
+                {
+                    option.ConfigureDbContext = db =>
+                    {
+                        db.UseSqlServer(Connectstring, option => option.MigrationsAssembly(assembly));
+                    };
+                })
+                .AddOperationalStore(option =>
+                {
+                    option.ConfigureDbContext = db =>
+                    {
+                        db.UseSqlServer(Connectstring, option => option.MigrationsAssembly(assembly));
+                    };
+                })
+                .AddDeveloperSigningCredential();
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseIdentityServer();
+app.UseAuthorization();
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapDefaultControllerRoute();
+});
+app.Run();
