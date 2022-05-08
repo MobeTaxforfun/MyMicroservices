@@ -46,14 +46,28 @@ builder.Services.AddIdentityServer()
                 })
                 .AddDeveloperSigningCredential();
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("CorsPolicy",
+//        builder => builder
+//        .WithOrigins("chrome-extension://fhbjgbiflinjbdggehcddcbncdddomop")
+//        .AllowAnyMethod()
+//        .AllowAnyHeader()
+//        .AllowCredentials());
+//});
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
 app.UseStaticFiles();
+
+app.UseCors("CorsPolicy");
 app.UseRouting();
 app.UseIdentityServer();
 app.UseAuthorization();
+
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapDefaultControllerRoute();

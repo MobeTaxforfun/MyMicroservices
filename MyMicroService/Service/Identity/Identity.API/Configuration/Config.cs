@@ -49,7 +49,7 @@ namespace Identity.API.Configuration
                   ClientId = "interactive",
                   ClientSecrets = { new Secret("ClientSecrets1".Sha256()) },
                   AllowedGrantTypes = GrantTypes.Code,
-                  RedirectUris=  { "https://localhost:7414/signin-oidc" },
+                  RedirectUris=  { "https://localhost:7514/signin-oidc" },
                   FrontChannelLogoutUri = "https://localhost:7414/singout-oidc",
                   PostLogoutRedirectUris= { "https://localhost:7414/signout-callback-oidc" },
                   AllowOfflineAccess = true,
